@@ -5,9 +5,9 @@ $root = $PSScriptRoot
 $dataDirectory = Join-Path $root "data"
 $uploadsDirectory = Join-Path $root "uploads"
 $dataFile = Join-Path $dataDirectory "mazraa.json"
-$username = "Belal"
-$passwordSalt = [byte[]]@(0x5a,0x9c,0x42,0xb4,0xca,0xe3,0x80,0xa9,0x2b,0x39,0x26,0x04,0x8e,0x8b,0xb3,0x07)
-$passwordHash = "4f32e47ee0f63872eed4a65a0bc3627803b201ae35b3703afacd155fe525c510"
+$loginPhone = "01044147246"
+$passwordSalt = [byte[]]@(0xBD,0x87,0x86,0x1B,0xA7,0x9D,0x8B,0x0F,0x39,0xB3,0x82,0x80,0x84,0xCD,0xE1,0x0A)
+$passwordHash = "64d5b824a2b04966371775ebf38e7be796c5be20e42863cf069dfb193811ce78"
 $sessions = @{}
 $loginAttempts = @{}
 $listener = New-Object System.Net.HttpListener
@@ -102,15 +102,16 @@ try {
         $remoteAddress = $request.RemoteEndPoint.Address.ToString()
         $attempt = $loginAttempts[$remoteAddress]
         if ($null -ne $attempt -and $attempt.LockedUntil -gt [DateTime]::UtcNow) {
-          Send-Json -Response $response -Status 429 -Value @{ error = "Too many login attempts. Wait 10 minutes and try again." }
+          Send-Json -Response $response -Status 429 -Value @{ error = "Too many attempts. Wait 10 minutes and try again." }
           continue
         }
 
         $loginBody = Read-BoundedBody -Request $request -Limit 8192
         $credentials = ConvertFrom-Json -InputObject ([System.Text.UTF8Encoding]::new($false).GetString($loginBody)) -ErrorAction Stop
-        $validUsername = [string]::Equals([string]$credentials.username, $username, [System.StringComparison]::OrdinalIgnoreCase)
+        $submittedPhone = ([string]$credentials.username).Trim()
+        $validPhone = [string]::Equals($submittedPhone, $loginPhone, [System.StringComparison]::Ordinal)
         $validPassword = $false
-        if ($validUsername -and $null -ne $credentials.password) {
+        if ($validPhone -and $null -ne $credentials.password) {
           $deriveBytes = [System.Security.Cryptography.Rfc2898DeriveBytes]::new(
             [string]$credentials.password,
             $passwordSalt,
@@ -127,14 +128,14 @@ try {
           $validPassword = $difference -eq 0
         }
 
-        if (-not ($validUsername -and $validPassword)) {
+        if (-not ($validPhone -and $validPassword)) {
           if ($null -eq $attempt -or $attempt.WindowStarted -lt [DateTime]::UtcNow.AddMinutes(-10)) {
             $attempt = @{ WindowStarted = [DateTime]::UtcNow; Failures = 0; LockedUntil = [DateTime]::MinValue }
           }
           $attempt.Failures++
           if ($attempt.Failures -ge 5) { $attempt.LockedUntil = [DateTime]::UtcNow.AddMinutes(10) }
           $loginAttempts[$remoteAddress] = $attempt
-          Send-Json -Response $response -Status 401 -Value @{ error = "Incorrect username or password." }
+          Send-Json -Response $response -Status 401 -Value @{ error = "Incorrect phone number or password." }
           continue
         }
 
@@ -176,6 +177,7 @@ try {
             invoiceRecords = @()
             gasRecords = @()
             extraExpenses = @()
+            workerRecords = @()
           }
           $body = [System.Text.UTF8Encoding]::new($false).GetBytes(
             (ConvertTo-Json -InputObject $initialState -Depth 8 -Compress)
@@ -249,6 +251,7 @@ try {
           "/index.html" = @{ name = "index.html"; type = "text/html; charset=utf-8" }
           "/styles.css" = @{ name = "styles.css"; type = "text/css; charset=utf-8" }
           "/app.js" = @{ name = "app.js"; type = "text/javascript; charset=utf-8" }
+          "/assets/farm-logo.png" = @{ name = "assets/farm-logo.png"; type = "image/png" }
         }
         if ($staticFiles.ContainsKey($path)) {
           $asset = $staticFiles[$path]

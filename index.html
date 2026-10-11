@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f7f2" />
-    <title>مَزارع | إدارة مزرعة الدواجن</title>
+    <title>مزرعة المالك | إدارة مزرعة الدواجن</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -13,11 +13,11 @@
   <body>
     <section id="login-screen" class="login-screen" aria-labelledby="login-title">
       <form id="login-form" class="login-card">
-        <span class="brand-mark login-brand-mark" aria-hidden="true">م</span>
+        <img class="brand-mark brand-logo login-brand-mark" src="assets/farm-logo.png" alt="شعار مزرعة المالك" />
         <div class="eyebrow"><span class="eyebrow-line"></span> تسجيل دخول آمن</div>
-        <h1 id="login-title">أهلًا بيك في مَزارع</h1>
+        <h1 id="login-title">أهلًا بيك في مزرعة المالك</h1>
         <p class="login-intro">سجّل الدخول عشان تتابع بيانات المزرعة وحساباتها.</p>
-        <label class="field"><span>اسم المستخدم</span><input type="text" name="username" autocomplete="username" required /></label>
+        <label class="field"><span>رقم التليفون</span><input type="tel" name="username" inputmode="tel" autocomplete="username" value="01044147246" required /></label>
         <label class="field"><span>كلمة المرور</span><input type="password" name="password" autocomplete="current-password" required /></label>
         <button class="button button-primary login-submit" type="submit">تسجيل الدخول</button>
         <p class="form-message" id="login-message" role="alert" aria-live="assertive"></p>
@@ -37,9 +37,9 @@
 
     <div class="app-shell" id="app-shell" hidden>
       <aside class="sidebar">
-        <a class="brand" href="#" aria-label="مَزارع - الرئيسية">
-          <span class="brand-mark" aria-hidden="true">م</span>
-          <span><strong>مَزارع</strong><small>إدارة مزرعة الدواجن</small></span>
+        <a class="brand" href="#" aria-label="مزرعة المالك - الرئيسية">
+          <img class="brand-mark brand-logo" src="assets/farm-logo.png" alt="" />
+          <span><strong>المالك</strong><small>مزرعة دواجن</small></span>
         </a>
 
         <div class="sidebar-label">القائمة الرئيسية</div>
@@ -47,6 +47,10 @@
           <button class="nav-link active" type="button" data-page="farm-page">
             <span class="nav-icon" aria-hidden="true">⌂</span>
             <span>متابعة المزرعة</span>
+          </button>
+          <button class="nav-link" type="button" data-page="workers-page">
+            <span class="nav-icon" aria-hidden="true">♙</span>
+            <span>العمال</span>
           </button>
           <button class="nav-link" type="button" data-page="invoices-page">
             <span class="nav-icon" aria-hidden="true">◷</span>
@@ -132,6 +136,63 @@
               </table>
             </div>
           </div>
+        </section>
+
+        <section id="workers-page" class="page" aria-labelledby="workers-title" hidden>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> الحضور والمستحقات</div>
+              <h1 id="workers-title">سجل العمال</h1>
+              <p>سجّل حضور وغياب العمال والسلف والإجازات حسب التاريخ.</p>
+            </div>
+            <button class="button button-secondary" type="button" data-print-page><span aria-hidden="true">⎙</span> طباعة السجل</button>
+          </div>
+          <section class="panel invoice-form-panel" aria-labelledby="worker-form-title">
+            <div class="panel-heading">
+              <div class="section-title">
+                <span class="section-icon section-icon-green" aria-hidden="true">♙</span>
+                <div><h2 id="worker-form-title">إضافة سجل عامل</h2><p>اختار العامل والتاريخ وسجّل حالته والسلفة أو الإجازة.</p></div>
+              </div>
+            </div>
+            <form id="worker-record-form" class="worker-record-form">
+              <label class="field"><span>اسم العامل <span class="required">*</span></span>
+                <select name="worker" required>
+                  <option value="أبو رودينا">أبو رودينا</option>
+                  <option value="عبد الرحمن">عبد الرحمن</option>
+                  <option value="محمد">محمد</option>
+                </select>
+              </label>
+              <label class="field"><span>التاريخ <span class="required">*</span></span><input type="date" name="date" required /></label>
+              <label class="field"><span>الحضور والغياب <span class="required">*</span></span>
+                <select name="attendance" required>
+                  <option value="حضور">حضور</option>
+                  <option value="غياب">غياب</option>
+                </select>
+              </label>
+              <label class="field"><span>السلفة (جنيه)</span><input type="number" name="advance" min="0" step="0.01" placeholder="٠٫٠٠" /></label>
+              <label class="field"><span>الإجازات (يوم)</span><input type="number" name="leaveDays" min="0" step="1" placeholder="عدد الأيام" /></label>
+              <label class="field"><span>ملاحظات</span><input type="text" name="notes" maxlength="160" placeholder="اختياري" /></label>
+              <button class="button button-primary" type="submit"><span aria-hidden="true">＋</span> حفظ السجل</button>
+            </form>
+            <p class="form-message" id="worker-record-message" role="status" aria-live="polite"></p>
+          </section>
+          <section class="panel invoice-list-panel">
+            <div class="panel-heading">
+              <div class="section-title">
+                <span class="section-icon section-icon-soft" aria-hidden="true">▤</span>
+                <div><h2>سجل حضور العمال</h2><p>كل سجل محفوظ بتاريخ العامل ويمكن مراجعته أو حذفه.</p></div>
+              </div>
+              <span class="record-count" id="worker-record-count">٠ سجل</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table worker-record-table">
+                <thead><tr><th>العامل</th><th>التاريخ</th><th>الحالة</th><th>السلفة</th><th>الإجازات</th><th>ملاحظات</th><th><span class="sr-only">إجراءات</span></th></tr></thead>
+                <tbody id="worker-records"></tbody>
+              </table>
+              <div class="empty-state" id="worker-records-empty"><span class="empty-icon" aria-hidden="true">♙</span><strong>لسه مفيش سجلات للعمال</strong><p>أضف سجل حضور أو غياب أو سلفة أو إجازة.</p></div>
+            </div>
+            <div class="gas-totals worker-totals"><span>إجمالي السلف: <strong id="worker-advance-total">٠٫٠٠</strong> جنيه</span><span>إجمالي أيام الإجازة: <strong id="worker-leave-total">٠</strong> يوم</span></div>
+          </section>
         </section>
 
         <section id="traders-page" class="page" aria-labelledby="traders-title" hidden>
@@ -297,7 +358,7 @@
           </section>
         </section>
 
-        <footer class="page-footer"><span>مَزارع <span class="footer-dot">·</span> إدارة أذكى لمزرعتك</span><span>تم إنشاؤه بواسطة Eng Belal wahid</span></footer>
+        <footer class="page-footer"><span>مزرعة المالك <span class="footer-dot">·</span> إدارة أذكى لمزرعتك</span><span>تم إنشاؤه بواسطة Eng Belal wahid</span></footer>
       </main>
     </div>
     <script src="app.js"></script>

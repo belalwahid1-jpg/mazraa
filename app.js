@@ -36,22 +36,25 @@ const gasForm = document.querySelector("#gas-form");
 const gasMessage = document.querySelector("#gas-message");
 const expenseForm = document.querySelector("#expense-form");
 const expenseMessage = document.querySelector("#expense-message");
+const workerRecordForm = document.querySelector("#worker-record-form");
+const workerRecordMessage = document.querySelector("#worker-record-message");
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   loginMessage.textContent = "";
   if (!loginForm.reportValidity()) return;
-  const submit = loginForm.querySelector('[type="submit"]');
-  const formData = new FormData(loginForm);
-  submit.disabled = true;
-  submit.textContent = "جارٍ التحقق...";
+
+  const button = loginForm.querySelector('[type="submit"]');
+  const credentials = new FormData(loginForm);
+  button.disabled = true;
+  button.textContent = "جارٍ التحقق...";
   try {
     await requestJson("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        username: formData.get("username"),
-        password: formData.get("password"),
+        username: credentials.get("username"),
+        password: credentials.get("password"),
       }),
     });
     loginForm.reset();
@@ -61,8 +64,8 @@ loginForm.addEventListener("submit", async (event) => {
   } catch (error) {
     loginMessage.textContent = error.message;
   } finally {
-    submit.disabled = false;
-    submit.textContent = "تسجيل الدخول";
+    button.disabled = false;
+    button.textContent = "تسجيل الدخول";
   }
 });
 
@@ -75,9 +78,10 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
     appShell.hidden = true;
     loginScreen.hidden = false;
     loginForm.reset();
+    loginForm.elements.username.value = "01044147246";
     loginMessage.textContent = "";
   } catch (error) {
-    loginMessage.textContent = `تعذر تسجيل الخروج: ${error.message}`;
+    farmMessage.textContent = `تعذر تسجيل الخروج: ${error.message}`;
   } finally {
     button.disabled = false;
   }
@@ -144,8 +148,67 @@ function normalizeState(value) {
     invoiceRecords: Array.isArray(value.invoiceRecords) ? value.invoiceRecords : [],
     gasRecords: Array.isArray(value.gasRecords) ? value.gasRecords : [],
     extraExpenses: Array.isArray(value.extraExpenses) ? value.extraExpenses : [],
+    workerRecords: Array.isArray(value.workerRecords) ? value.workerRecords : [],
     traders: Array.from({ length: TRADER_COUNT }, (_, index) => normalizeTrader(savedTraders[index])),
   };
+}
+
+function renderWorkerRecords() {
+  const tbody = document.querySelector("#worker-records");
+  const records = [...state.workerRecords].sort((left, right) => right.date.localeCompare(left.date));
+  tbody.replaceChildren();
+
+  records.forEach((record, index) => {
+    const row = document.createElement("tr");
+    [
+      record.worker,
+      formatDate(record.date),
+      record.attendance,
+      record.advance ? formatMoney(record.advance) : "—",
+      record.leaveDays ? formatNumber(record.leaveDays) : "—",
+      record.notes || "—",
+    ].forEach((value, columnIndex) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      if (columnIndex === 2) {
+        cell.className = record.attendance === "غياب" ? "attendance-absent" : "attendance-present";
+      }
+      row.append(cell);
+    });
+
+    const actionCell = document.createElement("td");
+    const removeButton = document.createElement("button");
+    removeButton.className = "delete-record";
+    removeButton.type = "button";
+    removeButton.textContent = "×";
+    removeButton.setAttribute("aria-label", `حذف سجل ${record.worker} بتاريخ ${formatDate(record.date)}`);
+    removeButton.addEventListener("click", async () => {
+      if (!window.confirm("متأكد إنك عايز تحذف سجل العامل؟")) return;
+      const previousRecords = state.workerRecords;
+      state.workerRecords = previousRecords.filter((item) => item.id !== record.id);
+      try {
+        await saveState();
+        renderWorkerRecords();
+        workerRecordMessage.textContent = "تم حذف سجل العامل.";
+      } catch (error) {
+        state.workerRecords = previousRecords;
+        renderWorkerRecords();
+        workerRecordMessage.textContent = `تعذر حذف السجل: ${error.message}`;
+      }
+    });
+    actionCell.append(removeButton);
+    row.append(actionCell);
+    tbody.append(row);
+  });
+
+  document.querySelector("#worker-record-count").textContent = `${formatNumber(records.length)} سجل`;
+  document.querySelector("#worker-records-empty").hidden = records.length > 0;
+  document.querySelector("#worker-advance-total").textContent = formatMoney(
+    records.reduce((sum, record) => sum + (Number(record.advance) || 0), 0),
+  );
+  document.querySelector("#worker-leave-total").textContent = formatNumber(
+    records.reduce((sum, record) => sum + (Number(record.leaveDays) || 0), 0),
+  );
 }
 
 function makeExpenseTableRow(expense, index) {
@@ -822,8 +885,41 @@ expenseForm.addEventListener("submit", async (event) => {
   }
 });
 
+workerRecordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  workerRecordMessage.textContent = "";
+  if (!workerRecordForm.reportValidity()) return;
+  const formData = new FormData(workerRecordForm);
+  const previousRecords = state.workerRecords;
+  state.workerRecords = [{
+    id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
+    worker: String(formData.get("worker")),
+    date: String(formData.get("date")),
+    attendance: String(formData.get("attendance")),
+    advance: String(formData.get("advance") || ""),
+    leaveDays: String(formData.get("leaveDays") || ""),
+    notes: String(formData.get("notes") || "").trim(),
+  }, ...previousRecords];
+
+  const button = workerRecordForm.querySelector('[type="submit"]');
+  button.disabled = true;
+  try {
+    await saveState();
+    renderWorkerRecords();
+    workerRecordForm.reset();
+    workerRecordForm.querySelector('[name="date"]').value = localIsoDate();
+    workerRecordMessage.textContent = "تم حفظ سجل العامل.";
+  } catch (error) {
+    state.workerRecords = previousRecords;
+    workerRecordMessage.textContent = `تعذر حفظ سجل العامل: ${error.message}`;
+  } finally {
+    button.disabled = false;
+  }
+});
+
 const pageNames = {
   "farm-page": "متابعة المزرعة",
+  "workers-page": "العمال",
   "invoices-page": "فواتير العلف",
   "electricity-page": "الكهرباء",
   "treatment-page": "العلاج",
@@ -865,6 +961,7 @@ async function initialize() {
     day: "numeric",
   }).format(new Date());
   document.querySelector("#record-date").value = localIsoDate();
+  workerRecordForm.querySelector('[name="date"]').value = localIsoDate();
   document.querySelector("#gas-form").querySelector('[name="date"]').value = localIsoDate();
   expenseForm.querySelector('[name="date"]').value = localIsoDate();
   document.querySelectorAll(".invoice-form [name=\"date\"]").forEach((input) => { input.value = localIsoDate(); });
@@ -874,6 +971,7 @@ async function initialize() {
     renderCycleForm();
     renderDailyTable();
     renderTraders();
+    renderWorkerRecords();
     renderGasRecords();
     ["feed", "electricity", "treatment"].forEach(renderInvoiceRecords);
     renderExpenses();
@@ -884,6 +982,7 @@ async function initialize() {
     state = normalizeState({});
     renderDailyTable();
     renderTraders();
+    renderWorkerRecords();
     renderGasRecords();
     ["feed", "electricity", "treatment"].forEach(renderInvoiceRecords);
     renderExpenses();
